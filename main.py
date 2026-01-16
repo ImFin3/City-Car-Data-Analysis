@@ -41,7 +41,7 @@ def question_two_testing_area():
     data = util.get_platform_analysis_dataframe()
     print(data)
 
-    fig = px.bar(data, "Platform", ["Download Count", "Signed Up User Count", "Download to Sign Up Conversion Rate", "Median Money spent per Ride in $"], barmode="group")
+    fig = px.bar(data, "Platform", ["Download Count", "Signed Up User Count", "Download to Sign Up Conversion Rate", "Average Money spent per Ride in $"], barmode="group")
     fig.show()
 
     download_count_per_platform = util.get_total_user_downloads_per_platform()
@@ -90,7 +90,6 @@ def question_four_testing_area():
     })
     scatter_data_day_of_year_trend = scatter_data_day_of_year_trend.value_counts().reset_index()
     scatter_data_day_of_year_trend.columns = ["Day of Year", "Ride Request Count"]
-    #scatter_data_day_of_year_trend = scatter_data_day_of_year_trend.sort_values("Day of Year", ascending=True)
     fig1 = px.bar(
         scatter_data_day_of_year_trend,
         x="Day of Year",

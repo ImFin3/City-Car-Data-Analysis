@@ -74,14 +74,14 @@ class Utility:
     def get_platform_analysis_dataframe(self) -> pd.DataFrame:
         p_d_c = self.get_total_user_downloads_per_platform()        # p_d_c => platform_download_count
         p_s_c = self.get_total_user_signups_per_platform()          # p_s_c => platform_signup_count
-        m_m = self.get_median_money_spent_per_ride_per_platform()     # m_m => median_money
+        a_m = self.get_average_money_spent_per_ride_per_platform()     # a_m => average_money
 
         df = pd.DataFrame({
             "Platform": ["iOS", "Android", "Web"],
             "Download Count": [p_d_c.ios, p_d_c.android, p_d_c.web],
             "Signed Up User Count": [p_s_c.ios, p_s_c.android, p_s_c.web],
             "Download to Sign Up Conversion Rate": [self.get_conversion_rate(p_d_c.ios, p_s_c.ios), self.get_conversion_rate(p_d_c.android, p_s_c.android), self.get_conversion_rate(p_d_c.web, p_s_c.web)],
-            "Median Money spent per Ride in $": [m_m.ios, m_m.android, m_m.web],
+            "Average Money spent per Ride in $": [a_m.ios, a_m.android, a_m.web],
         })
 
         return df
@@ -113,7 +113,7 @@ class Utility:
         merged = pd.merge(self.downloads_df, self.signups_df, left_on="app_download_key", right_on="session_id",how="inner")
         return merged[merged["platform"] == "web"]["app_download_key"].count()
 
-    def get_median_money_spent_per_ride_per_platform(self) -> MoneySpentPerPlatform:
+    def get_average_money_spent_per_ride_per_platform(self) -> MoneySpentPerPlatform:
         #merge downloads(platform) with signups
         platform_user_id = pd.merge(self.downloads_df, self.signups_df, left_on="app_download_key", right_on="session_id",how="inner")
         #get approved transactions only
