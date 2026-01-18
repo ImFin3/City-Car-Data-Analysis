@@ -40,8 +40,8 @@ class Utility:
 
 
     #region Funnel Analysis
-    def get_funnel_analysis_dataframe(self) -> pd.DataFrame:
-        f_a = self.full_funnel_analysis()   # f_a => funnel_analysis
+    def get_detailed_overall_funnel_analysis_dataframe(self) -> pd.DataFrame:
+        f_a = self.get_detailed_overall_funnel_analysis()   # f_a => funnel_analysis
 
         df = pd.DataFrame({
             "Conversion From To": ["Download to Sign Ups", "Sign Ups to unique User Ride Requests", "Ride Requests to Transactions", "Transactions to Approved Transactions"],
@@ -52,7 +52,26 @@ class Utility:
 
         return df
 
-    def full_funnel_analysis(self) -> tuple[ConversionStruct, ConversionStruct, ConversionStruct, ConversionStruct]:
+    def get_full_funnel_analysis_dataframe(self) -> pd.DataFrame:
+        platforms = self.get_platform_funnel_counts()
+        age_groups = self.get_age_group_funnel_counts()
+
+        df = pd.DataFrame({
+            "Stage": ["Downloads", "Sign Ups", "Unique User Ride Requests", "Unique User Transactions", "Unique User Approved Transactions"],
+            "Overall": [self.get_download_count(), self.get_signup_count(), self.get_unique_user_ride_request_count(), self.get_unique_user_transaction_count(), self.get_unique_approved_transactions_count()],
+            "IOS": [platforms[0].ios, platforms[1].ios, platforms[2].ios, platforms[3].ios, platforms[4].ios],
+            "Android": [platforms[0].android, platforms[1].android, platforms[2].android, platforms[3].android, platforms[4].android],
+            "Web": [platforms[0].web, platforms[1].web, platforms[2].web, platforms[3].web, platforms[4].web],
+            "18-24": [age_groups[0].age_18_to_24, age_groups[1].age_18_to_24, age_groups[2].age_18_to_24, age_groups[3].age_18_to_24, age_groups[4].age_18_to_24],
+            "25-34": [age_groups[0].age_25_to_34, age_groups[1].age_25_to_34, age_groups[2].age_25_to_34, age_groups[3].age_25_to_34, age_groups[4].age_25_to_34],
+            "35-44": [age_groups[0].age_35_to_44, age_groups[1].age_35_to_44, age_groups[2].age_35_to_44, age_groups[3].age_35_to_44, age_groups[4].age_35_to_44],
+            "45-54": [age_groups[0].age_45_to_54, age_groups[1].age_45_to_54, age_groups[2].age_45_to_54, age_groups[3].age_45_to_54, age_groups[4].age_45_to_54],
+            "Unknown Age": [age_groups[0].unknown, age_groups[1].unknown, age_groups[2].unknown, age_groups[3].unknown, age_groups[4].unknown]
+        })
+
+        return df
+
+    def get_detailed_overall_funnel_analysis(self) -> tuple[ConversionStruct, ConversionStruct, ConversionStruct, ConversionStruct]:
 
         return (self.get_conversion_rate_download_to_signups(), self.get_conversion_rate_signups_to_unique_user_ride_requests(),
                 self.get_conversion_rate_ride_requests_to_transactions(), self.get_conversion_rate_transactions_to_approved_transactions())
@@ -72,8 +91,8 @@ class Utility:
 
     #region Platform Analysis
     def get_platform_analysis_dataframe(self) -> pd.DataFrame:
-        p_d_c = self.get_total_user_downloads_per_platform()        # p_d_c => platform_download_count
-        p_s_c = self.get_total_user_signups_per_platform()          # p_s_c => platform_signup_count
+        p_d_c = self.get_download_count_per_platform()        # p_d_c => platform_download_count
+        p_s_c = self.get_signup_count_per_platform()          # p_s_c => platform_signup_count
         a_m = self.get_average_money_spent_per_ride_per_platform()     # a_m => average_money
 
         df = pd.DataFrame({
@@ -86,32 +105,94 @@ class Utility:
 
         return df
 
-    def get_total_user_downloads_per_platform(self) -> UserPerPlatform:
-        return self.UserPerPlatform(self.get_total_user_download_count_ios(), self.get_total_user_download_count_android(), self.get_total_user_download_count_web())
+    def get_platform_funnel_counts(self) -> tuple[UserPerPlatform, UserPerPlatform, UserPerPlatform, UserPerPlatform, UserPerPlatform]:
+        downloads = self.get_download_count_per_platform()  # p_d_c => platform_download_count
+        signups = self.get_signup_count_per_platform()  # p_s_c => platform_signup_count
+        unique_ride_requests = self.get_unique_ride_request_count_per_platform()
+        unique_transactions = self.get_unique_transaction_count_per_platform()
+        unique_approved_transactions = self.get_unique_approved_transaction_count_per_platform()
 
-    def get_total_user_download_count_ios(self) -> int:
-        return self.downloads_df[self.downloads_df["platform"] == "ios"]["app_download_key"].count()
+        return downloads, signups, unique_ride_requests, unique_transactions, unique_approved_transactions
 
-    def get_total_user_download_count_android(self) -> int:
-        return self.downloads_df[self.downloads_df["platform"] == "android"]["app_download_key"].count()
+    def get_download_count_per_platform(self) -> UserPerPlatform:
+        ios = int(self.downloads_df[self.downloads_df["platform"] == "ios"]["app_download_key"].count())
+        android = int(self.downloads_df[self.downloads_df["platform"] == "android"]["app_download_key"].count())
+        web = int(self.downloads_df[self.downloads_df["platform"] == "web"]["app_download_key"].count())
 
-    def get_total_user_download_count_web(self) -> int:
-        return self.downloads_df[self.downloads_df["platform"] == "web"]["app_download_key"].count()
+        return self.UserPerPlatform(ios, android, web)
 
-    def get_total_user_signups_per_platform(self) -> UserPerPlatform:
-        return self.UserPerPlatform(self.get_total_user_signups_count_ios(), self.get_total_user_signups_count_android(), self.get_total_user_signups_count_web())
-
-    def get_total_user_signups_count_ios(self) -> int:
+    def get_signup_count_per_platform(self) -> UserPerPlatform:
         merged = pd.merge(self.downloads_df, self.signups_df, left_on="app_download_key", right_on="session_id", how="inner")
-        return merged[merged["platform"] == "ios"]["app_download_key"].count()
 
-    def get_total_user_signups_count_android(self) -> int:
-        merged = pd.merge(self.downloads_df, self.signups_df, left_on="app_download_key", right_on="session_id",how="inner")
-        return merged[merged["platform"] == "android"]["app_download_key"].count()
+        ios = int(merged[merged["platform"] == "ios"]["app_download_key"].count())
+        android = int(merged[merged["platform"] == "android"]["app_download_key"].count())
+        web = int(merged[merged["platform"] == "web"]["app_download_key"].count())
 
-    def get_total_user_signups_count_web(self) -> int:
-        merged = pd.merge(self.downloads_df, self.signups_df, left_on="app_download_key", right_on="session_id",how="inner")
-        return merged[merged["platform"] == "web"]["app_download_key"].count()
+        return self.UserPerPlatform(ios, android, web)
+
+    def get_ride_request_count_per_platform(self) -> UserPerPlatform:
+        download_signups_merged = pd.merge(self.downloads_df, self.signups_df, left_on="app_download_key", right_on="session_id", how="inner")
+        download_ride_requests_merged = pd.merge(download_signups_merged, self.ride_requests_df, on="user_id", how="inner")
+
+        ios = int(download_ride_requests_merged[download_ride_requests_merged["platform"] == "ios"]["user_id"].count())
+        android = int(download_ride_requests_merged[download_ride_requests_merged["platform"] == "android"]["user_id"].count())
+        web = int(download_ride_requests_merged[download_ride_requests_merged["platform"] == "web"]["user_id"].count())
+
+        return self.UserPerPlatform(ios, android, web)
+
+    def get_unique_ride_request_count_per_platform(self) -> UserPerPlatform:
+        download_signups_merged = pd.merge(self.downloads_df, self.signups_df, left_on="app_download_key", right_on="session_id", how="inner")
+        download_ride_requests_merged = pd.merge(download_signups_merged, self.ride_requests_df, on="user_id", how="inner")
+
+        ios = download_ride_requests_merged[download_ride_requests_merged["platform"] == "ios"]["user_id"].nunique()
+        android = download_ride_requests_merged[download_ride_requests_merged["platform"] == "android"]["user_id"].nunique()
+        web = download_ride_requests_merged[download_ride_requests_merged["platform"] == "web"]["user_id"].nunique()
+
+        return self.UserPerPlatform(ios, android, web)
+
+    def get_transaction_count_per_platform(self) -> UserPerPlatform:
+        download_signups_merged = pd.merge(self.downloads_df, self.signups_df, left_on="app_download_key", right_on="session_id", how="inner")
+        download_ride_requests_merged = pd.merge(download_signups_merged, self.ride_requests_df, on="user_id", how="inner")
+        downloads_transactions_merged = pd.merge(download_ride_requests_merged, self.transactions_df, on="ride_id", how="inner")
+
+        ios = int(downloads_transactions_merged[downloads_transactions_merged["platform"] == "ios"]["user_id"].count())
+        android = int(downloads_transactions_merged[downloads_transactions_merged["platform"] == "android"]["user_id"].count())
+        web = int(downloads_transactions_merged[downloads_transactions_merged["platform"] == "web"]["user_id"].count())
+
+        return self.UserPerPlatform(ios, android, web)
+
+    def get_unique_transaction_count_per_platform(self) -> UserPerPlatform:
+        download_signups_merged = pd.merge(self.downloads_df, self.signups_df, left_on="app_download_key", right_on="session_id", how="inner")
+        download_ride_requests_merged = pd.merge(download_signups_merged, self.ride_requests_df, on="user_id", how="inner")
+        downloads_transactions_merged = pd.merge(download_ride_requests_merged, self.transactions_df, on="ride_id", how="inner")
+
+        ios = downloads_transactions_merged[downloads_transactions_merged["platform"] == "ios"]["user_id"].nunique()
+        android = downloads_transactions_merged[downloads_transactions_merged["platform"] == "android"]["user_id"].nunique()
+        web = downloads_transactions_merged[downloads_transactions_merged["platform"] == "web"]["user_id"].nunique()
+
+        return self.UserPerPlatform(ios, android, web)
+    
+    def get_approved_transaction_count_per_platform(self) -> UserPerPlatform:
+        download_signups_merged = pd.merge(self.downloads_df, self.signups_df, left_on="app_download_key", right_on="session_id", how="inner")
+        download_ride_requests_merged = pd.merge(download_signups_merged, self.ride_requests_df, on="user_id", how="inner")
+        downloads_transactions_merged = pd.merge(download_ride_requests_merged, self.transactions_df, on="ride_id", how="inner")
+
+        ios = int(downloads_transactions_merged[(downloads_transactions_merged["platform"] == "ios") & (downloads_transactions_merged["charge_status"] == "Approved")]["user_id"].count())
+        android = int(downloads_transactions_merged[(downloads_transactions_merged["platform"] == "android") & (downloads_transactions_merged["charge_status"] == "Approved")]["user_id"].count())
+        web = int(downloads_transactions_merged[(downloads_transactions_merged["platform"] == "web") & (downloads_transactions_merged["charge_status"] == "Approved")]["user_id"].count())
+
+        return self.UserPerPlatform(ios, android, web)
+        
+    def get_unique_approved_transaction_count_per_platform(self) -> UserPerPlatform:
+        download_signups_merged = pd.merge(self.downloads_df, self.signups_df, left_on="app_download_key", right_on="session_id", how="inner")
+        download_ride_requests_merged = pd.merge(download_signups_merged, self.ride_requests_df, on="user_id", how="inner")
+        downloads_transactions_merged = pd.merge(download_ride_requests_merged, self.transactions_df, on="ride_id", how="inner")
+
+        ios = downloads_transactions_merged[(downloads_transactions_merged["platform"] == "ios") & (downloads_transactions_merged["charge_status"] == "Approved")]["user_id"].nunique()
+        android = downloads_transactions_merged[(downloads_transactions_merged["platform"] == "android") & (downloads_transactions_merged["charge_status"] == "Approved")]["user_id"].nunique()
+        web = downloads_transactions_merged[(downloads_transactions_merged["platform"] == "web") & (downloads_transactions_merged["charge_status"] == "Approved")]["user_id"].nunique()
+
+        return self.UserPerPlatform(ios, android, web)
 
     def get_average_money_spent_per_ride_per_platform(self) -> MoneySpentPerPlatform:
         #merge downloads(platform) with signups
@@ -135,8 +216,8 @@ class Utility:
 
     #region Age Group Analysis
     def get_age_group_analysis_dataframe(self) -> pd.DataFrame:
-        s_a_d_c = self.get_signup_age_group_distribution_count()  # s_a_d_c => signup_age_distribution_count
-        a_rr_a_d_c = self.get_approved_ride_request_age_group_distribution_count()   # a_rr_a_d_c => approved_riderequest_age_distribution_count
+        s_a_d_c = self.get_signup_count_per_age_group()  # s_a_d_c => signup_age_distribution_count
+        a_rr_a_d_c = self.get_approved_ride_request_count_per_age_group()   # a_rr_a_d_c => approved_riderequest_age_distribution_count
         r_p_u_18_24 = self.get_conversion_rate(s_a_d_c.age_18_to_24 ,a_rr_a_d_c.age_18_to_24)  # r_p_u => rides_per_user
         r_p_u_25_34 = self.get_conversion_rate(s_a_d_c.age_25_to_34 ,a_rr_a_d_c.age_25_to_34)
         r_p_u_35_44 = self.get_conversion_rate(s_a_d_c.age_35_to_44 ,a_rr_a_d_c.age_35_to_44)
@@ -152,17 +233,129 @@ class Utility:
 
         return df
 
-    def get_signup_age_group_distribution_count(self) -> AgeGroupDistribution:
-        age_distribution = self.AgeGroupDistribution(0,0,0,0,0)
-        age_distribution.age_18_to_24 = int(self.signups_df[self.signups_df["age_range"] == "18-24"]["user_id"].count())
-        age_distribution.age_25_to_34 = int(self.signups_df[self.signups_df["age_range"] == "25-34"]["user_id"].count())
-        age_distribution.age_35_to_44 = int(self.signups_df[self.signups_df["age_range"] == "35-44"]["user_id"].count())
-        age_distribution.age_45_to_54 = int(self.signups_df[self.signups_df["age_range"] == "45-54"]["user_id"].count())
-        age_distribution.unknown = int(self.signups_df[self.signups_df["age_range"] == "Unknown"]["user_id"].count())
+    def get_age_group_funnel_counts(self) -> tuple[AgeGroupDistribution, AgeGroupDistribution, AgeGroupDistribution, AgeGroupDistribution, AgeGroupDistribution]:
+        d_c = self.get_download_count_per_age_group()
+        s_c = self.get_signup_count_per_age_group()
+        u_rr_c = self.get_unique_ride_request_count_per_age_group()
+        u_t_c = self.get_unique_transaction_count_per_age_group()
+        u_at_c = self.get_unique_approved_transaction_count_per_age_group()
 
+        return d_c, s_c, u_rr_c, u_t_c, u_at_c
+
+    def get_download_count_per_age_group(self) -> AgeGroupDistribution:
+        merged = pd.merge(self.downloads_df, self.signups_df, how="inner", left_on="app_download_key", right_on="session_id")
+
+        distribution = self.AgeGroupDistribution(
+            age_18_to_24=int(merged[merged["age_range"] == "18-24"]["user_id"].count()),
+            age_25_to_34=int(merged[merged["age_range"] == "25-34"]["user_id"].count()),
+            age_35_to_44=int(merged[merged["age_range"] == "35-44"]["user_id"].count()),
+            age_45_to_54=int(merged[merged["age_range"] == "45-54"]["user_id"].count()),
+            unknown=int(merged[merged["age_range"] == "Unknown"]["user_id"].count())
+        )
+
+        return distribution
+
+
+    def get_signup_count_per_age_group(self) -> AgeGroupDistribution:
+        age_distribution = self.AgeGroupDistribution(
+            age_18_to_24 = int(self.signups_df[self.signups_df["age_range"] == "18-24"]["user_id"].count()),
+            age_25_to_34 = int(self.signups_df[self.signups_df["age_range"] == "25-34"]["user_id"].count()),
+            age_35_to_44 = int(self.signups_df[self.signups_df["age_range"] == "35-44"]["user_id"].count()),
+            age_45_to_54 = int(self.signups_df[self.signups_df["age_range"] == "45-54"]["user_id"].count()),
+            unknown = int(self.signups_df[self.signups_df["age_range"] == "Unknown"]["user_id"].count())
+        )
         return age_distribution
 
-    def get_approved_ride_request_age_group_distribution_count(self) -> AgeGroupDistribution:
+    def get_unique_ride_request_count_per_age_group(self) -> AgeGroupDistribution:
+        download_signups = pd.merge(self.downloads_df, self.signups_df, how="inner", left_on="app_download_key", right_on="session_id")
+        download_ride_requests = pd.merge(download_signups, self.ride_requests_df, on="user_id", how="inner")
+
+        distribution = self.AgeGroupDistribution(
+            age_18_to_24=download_ride_requests[download_ride_requests["age_range"] == "18-24"]["user_id"].nunique(),
+            age_25_to_34=download_ride_requests[download_ride_requests["age_range"] == "25-34"]["user_id"].nunique(),
+            age_35_to_44=download_ride_requests[download_ride_requests["age_range"] == "35-44"]["user_id"].nunique(),
+            age_45_to_54=download_ride_requests[download_ride_requests["age_range"] == "45-54"]["user_id"].nunique(),
+            unknown=download_ride_requests[download_ride_requests["age_range"] == "Unknown"]["user_id"].nunique()
+        )
+
+        return distribution
+
+    def get_ride_request_count_per_age_group(self) -> AgeGroupDistribution:
+        download_signups = pd.merge(self.downloads_df, self.signups_df, how="inner", left_on="app_download_key", right_on="session_id")
+        download_ride_requests = pd.merge(download_signups, self.ride_requests_df, on="user_id", how="inner")
+
+        distribution = self.AgeGroupDistribution(
+            age_18_to_24=int(download_ride_requests[download_ride_requests["age_range"] == "18-24"]["user_id"].count()),
+            age_25_to_34=int(download_ride_requests[download_ride_requests["age_range"] == "25-34"]["user_id"].count()),
+            age_35_to_44=int(download_ride_requests[download_ride_requests["age_range"] == "35-44"]["user_id"].count()),
+            age_45_to_54=int(download_ride_requests[download_ride_requests["age_range"] == "45-54"]["user_id"].count()),
+            unknown=int(download_ride_requests[download_ride_requests["age_range"] == "Unknown"]["user_id"].count())
+        )
+
+        return distribution
+
+    def get_unique_transaction_count_per_age_group(self) -> AgeGroupDistribution:
+        download_signups = pd.merge(self.downloads_df, self.signups_df, how="inner", left_on="app_download_key", right_on="session_id")
+        download_ride_requests = pd.merge(download_signups, self.ride_requests_df, on="user_id", how="inner")
+        download_transactions = pd.merge(download_ride_requests, self.transactions_df, on="ride_id", how="inner")
+
+        distribution = self.AgeGroupDistribution(
+            age_18_to_24=download_transactions[download_transactions["age_range"] == "18-24"]["user_id"].nunique(),
+            age_25_to_34=download_transactions[download_transactions["age_range"] == "25-34"]["user_id"].nunique(),
+            age_35_to_44=download_transactions[download_transactions["age_range"] == "35-44"]["user_id"].nunique(),
+            age_45_to_54=download_transactions[download_transactions["age_range"] == "45-54"]["user_id"].nunique(),
+            unknown=download_transactions[download_transactions["age_range"] == "Unknown"]["user_id"].nunique()
+        )
+
+        return distribution
+
+    def get_transaction_count_per_age_group(self) -> AgeGroupDistribution:
+        download_signups = pd.merge(self.downloads_df, self.signups_df, how="inner", left_on="app_download_key", right_on="session_id")
+        download_ride_requests = pd.merge(download_signups, self.ride_requests_df, on="user_id", how="inner")
+        download_transactions = pd.merge(download_ride_requests, self.transactions_df, on="ride_id", how="inner")
+
+        distribution = self.AgeGroupDistribution(
+            age_18_to_24=int(download_transactions[download_transactions["age_range"] == "18-24"]["user_id"].count()),
+            age_25_to_34=int(download_transactions[download_transactions["age_range"] == "25-34"]["user_id"].count()),
+            age_35_to_44=int(download_transactions[download_transactions["age_range"] == "35-44"]["user_id"].count()),
+            age_45_to_54=int(download_transactions[download_transactions["age_range"] == "45-54"]["user_id"].count()),
+            unknown=int(download_transactions[download_transactions["age_range"] == "Unknown"]["user_id"].count())
+        )
+
+        return distribution
+
+    def get_unique_approved_transaction_count_per_age_group(self) -> AgeGroupDistribution:
+        download_signups = pd.merge(self.downloads_df, self.signups_df, how="inner", left_on="app_download_key", right_on="session_id")
+        download_ride_requests = pd.merge(download_signups, self.ride_requests_df, on="user_id", how="inner")
+        download_transactions = pd.merge(download_ride_requests, self.transactions_df, on="ride_id", how="inner")
+
+        distribution = self.AgeGroupDistribution(
+            age_18_to_24=download_transactions[(download_transactions["age_range"] == "18-24") & (download_transactions["charge_status"] == "Approved")]["user_id"].nunique(),
+            age_25_to_34=download_transactions[(download_transactions["age_range"] == "25-34") & (download_transactions["charge_status"] == "Approved")]["user_id"].nunique(),
+            age_35_to_44=download_transactions[(download_transactions["age_range"] == "35-44") & (download_transactions["charge_status"] == "Approved")]["user_id"].nunique(),
+            age_45_to_54=download_transactions[(download_transactions["age_range"] == "45-54") & (download_transactions["charge_status"] == "Approved")]["user_id"].nunique(),
+            unknown=download_transactions[(download_transactions["age_range"] == "Unknown") & (download_transactions["charge_status"] == "Approved")]["user_id"].nunique()
+        )
+
+        return distribution
+
+    def get_approved_transaction_count_per_age_group(self) -> AgeGroupDistribution:
+        download_signups = pd.merge(self.downloads_df, self.signups_df, how="inner", left_on="app_download_key", right_on="session_id")
+        download_ride_requests = pd.merge(download_signups, self.ride_requests_df, on="user_id", how="inner")
+        download_transactions = pd.merge(download_ride_requests, self.transactions_df, on="ride_id", how="inner")
+
+        distribution = self.AgeGroupDistribution(
+            age_18_to_24=int(download_transactions[(download_transactions["age_range"] == "18-24") & (download_transactions["charge_status"] == "Approved")]["user_id"].count()),
+            age_25_to_34=int(download_transactions[(download_transactions["age_range"] == "25-34") & (download_transactions["charge_status"] == "Approved")]["user_id"].count()),
+            age_35_to_44=int(download_transactions[(download_transactions["age_range"] == "35-44") & (download_transactions["charge_status"] == "Approved")]["user_id"].count()),
+            age_45_to_54=int(download_transactions[(download_transactions["age_range"] == "45-54") & (download_transactions["charge_status"] == "Approved")]["user_id"].count()),
+            unknown=int(download_transactions[(download_transactions["age_range"] == "Unknown") & (download_transactions["charge_status"] == "Approved")]["user_id"].count())
+        )
+
+        return distribution
+
+
+    def get_approved_ride_request_count_per_age_group(self) -> AgeGroupDistribution:
         approved_transactions = self.transactions_df[self.transactions_df["charge_status"] == "Approved"]
         approved_ride_requests = pd.merge(self.ride_requests_df, approved_transactions, on="ride_id", how="inner")
         merged_user_id_with_approved_ride_requests = pd.merge(self.signups_df, approved_ride_requests, on="user_id", how="inner")
@@ -228,12 +421,22 @@ class Utility:
     def get_transaction_count(self) -> int:
         return self.transactions_df.shape[0]
 
+    def get_unique_user_transaction_count(self) -> int:
+        merged = pd.merge(self.ride_requests_df, self.transactions_df, on="ride_id", how="inner")
+
+        return merged["user_id"].nunique()
+
     def get_approved_transactions_count(self) -> int:
         return int(self.transactions_df[self.transactions_df["charge_status"] == "Approved"]["transaction_id"].count())
 
+    def get_unique_approved_transactions_count(self) -> int:
+        merged = pd.merge(self.ride_requests_df, self.transactions_df, on="ride_id", how="inner")
+
+        return merged[merged["charge_status"] == "Approved"]["user_id"].nunique()
+
     @staticmethod
     def get_conversion_rate(start: int, end: int) -> float:
-        return end / start
+        return end / start * 100
 
     def get_conversion_rate_struct(self, start: int, end: int) -> ConversionStruct:
         return self.ConversionStruct(start, end, self.get_conversion_rate(start, end))

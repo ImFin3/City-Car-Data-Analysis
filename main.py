@@ -8,8 +8,9 @@ util = Utility()
 
 def main():
 
-    random_test()
-
+    full_funnel_analysis_chart_with_counts()
+    full_funnel_analysis_chart_percent_of_the_previous()
+    full_funnel_analysis_chart_percent_of_the_top()
     #question_one_testing_area()
     #question_two_testing_area()
     #question_three_testing_area()
@@ -18,13 +19,13 @@ def main():
 
 def question_one_testing_area():
 
-    data = util.get_funnel_analysis_dataframe()
+    data = util.get_detailed_overall_funnel_analysis_dataframe()
     print(data)
 
     fig = px.bar(data, "Conversion From To", ["Before", "After", "Conversion Rate"], barmode="group")
     fig.show()
 
-    download_to_signup, signup_to_ride_request, ride_request_to_transaction, transaction_to_approved_transaction = util.full_funnel_analysis()
+    download_to_signup, signup_to_ride_request, ride_request_to_transaction, transaction_to_approved_transaction = util.get_detailed_overall_funnel_analysis()
 
     print(f"Es gab {download_to_signup.before} Downloads und {download_to_signup.after} Sign Ups! "
           f"Das ist eine Conversion Rate von {download_to_signup.conversion_rate}!")
@@ -44,8 +45,8 @@ def question_two_testing_area():
     fig = px.bar(data, "Platform", ["Download Count", "Signed Up User Count", "Download to Sign Up Conversion Rate", "Average Money spent per Ride in $"], barmode="group")
     fig.show()
 
-    download_count_per_platform = util.get_total_user_downloads_per_platform()
-    signup_count_per_platform = util.get_total_user_signups_per_platform()
+    download_count_per_platform = util.get_download_count_per_platform()
+    signup_count_per_platform = util.get_signup_count_per_platform()
 
     print(f"Von {download_count_per_platform.ios} iOS downloads, haben sich {signup_count_per_platform.ios} Signed Up! "
           f"Das ist eine Conversion Rate von {util.get_conversion_rate(download_count_per_platform.ios, signup_count_per_platform.ios)}!")
@@ -116,83 +117,88 @@ def question_four_testing_area():
     )
     fig2.show()
 
-def random_test():
-    # --- Beispiel-Daten im Wide-Format ---
-    data = {
-        "Funnel-Stage": [
-            "Downloads",
-            "Sign Ups",
-            "Unique User Ride Request",
-            "Ride Requests",
-            "Transactions",
-            "Approved Transactions"
-        ],
-        "Overall": [100000, 60000, 30000, 25000, 18000, 15000],
-        "IOS": [40000, 25000, 12000, 10000, 8000, 7000],
-        "Android": [50000, 28000, 14000, 12000, 9000, 7500],
-        "Web": [10000, 7000, 4000, 3000, 1000, 500],
-        "18-24": [30000, 18000, 9000, 7500, 5300, 4500],
-        "25-34": [40000, 24000, 12000, 10000, 7200, 6000],
-        "35-44": [20000, 12000, 6000, 5000, 3600, 3000],
-        "45-54": [8000, 5000, 2500, 2200, 1700, 1300],
-        "Unknown": [2000, 1000, 500, 300, 200, 200],
-    }
-    df_wide = pd.DataFrame(data)
+def full_funnel_analysis_chart_with_counts():
+    data = util.get_full_funnel_analysis_dataframe()
 
-    # --- Long-Format ---
-    value_cols = [c for c in df_wide.columns if c != "Funnel-Stage"]
-    df_long = df_wide.melt(id_vars="Funnel-Stage",
-                           value_vars=value_cols,
-                           var_name="Category",
-                           value_name="Value")
+    fig = px.funnel(data, x=["Overall", "IOS", "Android", "Web", "18-24", "25-34", "35-44", "45-54", "Unknown Age"], y="Stage", title="Funnel with Counts")
+    fig.update_traces(
+        texttemplate="%{x}",
+        hovertemplate="<b>%{y}</b><br>"
+                      "Count: %{x}"
 
-    # Stage-Order fixieren
-    stage_order = [
-        "Approved Transactions",
-        "Transactions",
-        "Ride Requests",
-        "Unique User Ride Request",
-        "Sign Ups",
-        "Downloads"
+    )
+    fig.update_layout(template="plotly_white")
+    fig.show()
+
+def full_funnel_analysis_chart_percent_of_the_previous():
+    percentage_data = util.get_full_funnel_analysis_dataframe()
+
+    value_columns = [
+        "Overall", "IOS", "Android", "Web",
+        "18-24", "25-34", "35-44", "45-54", "Unknown Age"
     ]
-    df_long["Funnel-Stage"] = pd.Categorical(df_long["Funnel-Stage"],
-                                             categories=stage_order,
-                                             ordered=True)
 
-    # --- Prozent vom Top-of-Funnel (pro Kategorie getrennt) ---
-    # Für jede Category: teile alle Stufen durch den Wert der ersten Stufe (Downloads)
-    top_values = (
-        df_long[df_long["Funnel-Stage"] == "Downloads"]
-        .set_index("Category")["Value"]
-        .to_dict()
+    percentage_data[value_columns] = percentage_data[value_columns].astype(float)
+
+    for col in value_columns:
+        shifted_data = percentage_data[col].shift(1)
+        for index in percentage_data.index:
+            percentage_data.loc[index, col] = percentage_data[col][index] / shifted_data[index] * 100
+    percentage_data.loc[percentage_data.index[0], value_columns] = 100
+
+    fig = px.funnel(
+        percentage_data,
+        x=value_columns,
+        y="Stage",
+        title="Conversion Rate - Percent of the previous"
     )
+    fig.update_traces(
+        texttemplate="%{x:.1f}%",
+        hovertemplate="<b>%{y}</b><br>"
+                      "Conversion: %{x}"
 
-    df_long["pct_top"] = df_long.apply(
-        lambda r: (r["Value"] / top_values[r["Category"]]) if top_values[r["Category"]] else 0.0,
-        axis=1
     )
+    fig.update_layout(template="plotly_white")
+    fig.update_xaxes(ticksuffix="%")
 
-    # Funnel in Prozent zeichnen
-    fig_top = px.funnel(
-        df_long,
-        x="pct_top",
-        y="Funnel-Stage",
-        color="Category",
-        category_orders={"Funnel-Stage": stage_order},
-        title="Funnel – Prozent vom Top-of-Funnel"
+    fig.show()
+
+def full_funnel_analysis_chart_percent_of_the_top():
+    percentage_data = util.get_full_funnel_analysis_dataframe()
+
+    value_columns = [
+        "Overall", "IOS", "Android", "Web",
+        "18-24", "25-34", "35-44", "45-54", "Unknown Age"
+    ]
+
+    percentage_data[value_columns] = percentage_data[value_columns].astype(float)
+
+    for col in value_columns:
+        top_value = percentage_data[col][0]
+
+        for index in percentage_data.index:
+            if top_value == 0:
+                percentage_data.loc[index, col] = 0
+            else:
+                percentage_data.loc[index, col] = (
+                        percentage_data.loc[index, col] / top_value * 100
+                )
+
+    fig = px.funnel(
+        percentage_data,
+        x=value_columns,
+        y="Stage",
+        title="Conversion Rate - Percent of the top"
     )
-
-    # Prozentformat & Hover
-    fig_top.update_xaxes(tickformat=".0%")
-    fig_top.update_traces(
-        hovertemplate="<b>%{y}</b><br>Kategorie: %{fullData.name}"
-                      "<br>Top-%: %{x:.1%}<extra></extra>"
+    fig.update_traces(
+        texttemplate="%{x:.1f}%",
+        hovertemplate="<b>%{y}</b><br>"
+                      "Conversion: %{x}"
     )
+    fig.update_layout(template="plotly_white")
+    fig.update_xaxes(ticksuffix="%")
 
-    # Optional: Legenden-/Dropdown-Logik aus dem vorherigen Beispiel weiterverwenden
-    fig_top.show()
-
-
+    fig.show()
 
 if __name__ == "__main__":
     main()
