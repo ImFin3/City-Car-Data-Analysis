@@ -7,10 +7,15 @@ util = Utility()
 
 
 def main():
-
     full_funnel_analysis_chart_with_counts()
     full_funnel_analysis_chart_percent_of_the_previous()
     full_funnel_analysis_chart_percent_of_the_top()
+    comparison_accept_pickup_cancel_duration()
+    cancellation_count_per_hour()
+    daily_ride_counts()
+    ride_request_per_day_of_year()
+    time_per_day_of_year()
+    #pickup_location_density_map()
     #question_one_testing_area()
     #question_two_testing_area()
     #question_three_testing_area()
@@ -70,7 +75,6 @@ def question_three_testing_area():
 def question_four_testing_area():
 
     data = util.get_surge_pricing_analysis_dataframe()
-    print(data)
 
     scatter_data_yearly_time_trend = pd.DataFrame({
         "Day of Year": data["Day of Year"],
@@ -199,6 +203,105 @@ def full_funnel_analysis_chart_percent_of_the_top():
     fig.update_xaxes(ticksuffix="%")
 
     fig.show()
+
+def comparison_accept_pickup_cancel_duration():
+    data = util.get_accept_cancel_pickup_duration_dataframe()
+
+    fig = px.box(data,
+                 y=["time_till_accept_min", "time_till_pickup_min", "time_till_cancel_min"],
+                 labels={
+                     "variable": "Category",
+                     "value": "Duration in minutes"
+                 },
+                 title="Comparison Accept, Pickup, Cancel Duration",
+                 color="variable")
+    fig.update_layout(template="plotly_white")
+    fig.show()
+
+def cancellation_count_per_hour():
+    data = util.get_cancel_count_per_hour_dataframe()
+
+    fig = px.line(data,
+                  x="hour",
+                  y="cancel_count",
+                  title="Cancel Count per Hour overall",
+                  labels={
+                      "hour": "Hour",
+                      "cancel_count": "Cancellation Count"
+                  })
+    fig.update_layout(template="plotly_white")
+    fig.update_xaxes(
+        dtick="H1",
+        tickformat="%H"
+    )
+    fig.show()
+
+def time_per_day_of_year():
+    data = util.get_surge_pricing_analysis_dataframe()
+
+    scatter_data_yearly_time_trend = pd.DataFrame({
+        "Day of Year": data["Day of Year"],
+        "Time": data["Time"],
+        "Hour": data["Hour"]
+    })
+    scatter_data_yearly_time_trend = scatter_data_yearly_time_trend.sort_values("Time", ascending=True)
+    fig = px.scatter(
+        scatter_data_yearly_time_trend,
+        x="Day of Year",
+        y="Time",
+        title="Ride Request Time per Day of Year"
+    )
+    fig.update_layout(template="plotly_white")
+    fig.show()
+
+def ride_request_per_day_of_year():
+    data = util.get_surge_pricing_analysis_dataframe()
+
+    day_of_year_trend = pd.DataFrame({
+        "Day of Year": data["Day of Year"],
+    })
+    day_of_year_trend = day_of_year_trend.value_counts().reset_index()
+    day_of_year_trend.columns = ["Day of Year", "Ride Request Count"]
+    fig1 = px.bar(
+        day_of_year_trend,
+        x="Day of Year",
+        y="Ride Request Count",
+        title="Ride Request Count per Day of Year"
+    )
+    fig1.show()
+
+def daily_ride_counts():
+    data = util.get_daily_ride_count_dataframe()
+
+    fig = px.bar(data,
+                  x="day",
+                  y="ride_count",
+                  title="Daily Ride Request Count",
+                  labels={"day": "Month", "ride_count": "Ride Count"})
+    fig.update_layout(template="plotly_white")
+    fig.update_xaxes(
+        dtick="M1",
+        tickformat="%Y-%m"
+    )
+    fig.show()
+
+def pickup_location_density_map():
+    data = util.get_all_pickup_locations_dataframe()
+    print(data)
+
+    fig = px.density_map(
+        data,
+        lat="lat",
+        lon="lon",
+        zoom=10,
+        radius=8,
+    )
+
+    fig.show()
+
+
+
+
 
 if __name__ == "__main__":
     main()

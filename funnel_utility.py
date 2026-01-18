@@ -87,6 +87,45 @@ class Utility:
 
     def get_conversion_rate_transactions_to_approved_transactions(self) -> ConversionStruct:
         return self.get_conversion_rate_struct(self.get_transaction_count(), self.get_approved_transactions_count())
+
+    def get_accept_cancel_pickup_duration_dataframe(self) -> pd.DataFrame:
+        time_cols = [
+            "request_ts",
+            "accept_ts",
+            "pickup_ts",
+            "cancel_ts"
+        ]
+
+        df = pd.DataFrame()
+
+        for col in time_cols:
+            df[col] = pd.to_datetime(self.ride_requests_df[col], errors='coerce')
+
+        df["time_till_accept"] = df["accept_ts"] - df["request_ts"]
+        df["time_till_pickup"] = df["pickup_ts"] - df["request_ts"]
+        df["time_till_cancel"] = df["cancel_ts"] - df["request_ts"]
+
+        df["time_till_accept_min"] = df["time_till_accept"].dt.total_seconds() / 60
+        df["time_till_pickup_min"] = df["time_till_pickup"].dt.total_seconds() / 60
+        df["time_till_cancel_min"] = df["time_till_cancel"].dt.total_seconds() / 60
+
+        return df
+
+    def get_cancel_count_per_hour_dataframe(self) -> pd.DataFrame:
+        df = self.ride_requests_df
+        df["cancel_ts"] = pd.to_datetime(df["cancel_ts"], errors='coerce')
+
+        df["hour"] = df["cancel_ts"].dt.hour
+
+        cancel_per_hour = (
+            df.groupby("hour")
+            .size()
+            .reindex(range(24), fill_value=0)
+            .reset_index(name="cancel_count")
+        )
+
+        return cancel_per_hour
+
     #endregion
 
     #region Platform Analysis
@@ -402,6 +441,37 @@ class Utility:
         ready_df["Time"] = pd.to_datetime(ready_df["Time"], format="%H:%M:%S")
 
         return ready_df
+
+    def get_all_pickup_locations_dataframe(self) -> pd.DataFrame:
+        df = self.ride_requests_df
+        df = df[
+            df["pickup_location"].notna() &
+            (df["pickup_location"] != "<unset>")
+            ]
+
+        #robust splitten (beliebig viele Whitespaces)
+        coords = df["pickup_location"].str.split(r"\s+", expand=True)
+
+        #nur die ersten zwei Spalten nehmen
+        coords.columns = ["lat", "lon"]
+
+        # 4. sicher in numerisch umwandeln
+        coords = coords.apply(pd.to_numeric, errors="coerce")
+
+        return coords
+
+    def get_daily_ride_count_dataframe(self) -> pd.DataFrame:
+        df = self.ride_requests_df
+        df["request_ts"] = pd.to_datetime(df["request_ts"], errors="coerce")
+        df["day"] = df["request_ts"].dt.to_period("D").dt.to_timestamp()
+
+        return (
+            df.dropna(subset=["request_ts"])
+            .groupby("day")
+            .size()
+            .reset_index(name="ride_count")
+            .sort_values("day")
+        )
 
     #endregion
 
