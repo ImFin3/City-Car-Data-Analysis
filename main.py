@@ -1,121 +1,196 @@
+import plotly.express as px
 import pandas as pd
 
-from funnel_utility import Utility
-import plotly.express as px
+from funnel_utility import FunnelUtility, BUSINESS_COLORS
 
-util = Utility()
+
+def apply_business_layout(fig, legend_title="Segment"):
+    """
+    Einheitliches Styling:
+    - helle Oberfläche (Business)
+    - große, gut lesbare Legende
+    - dezente Farben
+    """
+    fig.update_layout(
+        template="plotly_white",
+        colorway=BUSINESS_COLORS,
+        font=dict(size=14),
+        title=dict(font=dict(size=20)),
+        legend=dict(
+            title=legend_title,
+            font=dict(size=13),
+            bgcolor="rgba(255,255,255,0.85)",
+            bordercolor="rgba(0,0,0,0.10)",
+            borderwidth=1,
+            orientation="v",
+        ),
+        margin=dict(l=70, r=40, t=80, b=70),
+    )
+    return fig
+
+
+def save_and_open(fig, util: FunnelUtility, filename: str):
+    """
+    Speichert HTML und öffnet im Browser.
+    """
+    path = util.output_dir / filename
+    fig.write_html(str(path), auto_open=True, include_plotlyjs="cdn")
+
+
+def plot_funnel_overall(util: FunnelUtility, user_df: pd.DataFrame):
+    counts = util.funnel_counts(user_df)
+    conv = util.conversion_table(counts, col="Users")
+    worst_label, worst_cr = util.worst_step(conv)
+
+    # Funnel Counts
+    fig1 = px.funnel(
+        counts, y="Stage", x="Users",
+        title="First-Ride Funnel (Overall) – Counts"
+    )
+    fig1.update_traces(texttemplate="%{x}", hovertemplate="<b>%{y}</b><br>Users: %{x}<extra></extra>")
+    fig1 = apply_business_layout(fig1, legend_title="")
+    save_and_open(fig1, util, "01_funnel_overall_counts.html")
+
+    # Funnel % of previous
+    pct = util.percent_of_previous(counts.rename(columns={"Users": "Overall"}), ["Overall"])
+    fig2 = px.funnel(
+        pct, y="Stage", x="Overall",
+        title="First-Ride Funnel (Overall) – % of Previous Step"
+    )
+    fig2.update_traces(texttemplate="%{x:.1f}%", hovertemplate="<b>%{y}</b><br>Conversion: %{x:.2f}%<extra></extra>")
+    fig2.update_xaxes(ticksuffix="%")
+    fig2 = apply_business_layout(fig2, legend_title="")
+    save_and_open(fig2, util, "02_funnel_overall_pct_previous.html")
+
+    # Step Conversion Bar
+    fig3 = px.bar(
+        conv,
+        x="From",
+        y="Conversion (%)",
+        title=f"Step Conversion (Overall) – Bottleneck: {worst_label} ({worst_cr:.2f}%)",
+        labels={"From": "Step (From)", "Conversion (%)": "Conversion (%)"},
+    )
+    fig3.update_traces(hovertemplate="<b>%{x}</b><br>CR: %{y:.2f}%<extra></extra>")
+    fig3 = apply_business_layout(fig3, legend_title="")
+    save_and_open(fig3, util, "03_step_conversion_overall.html")
+
+
+def plot_funnel_by_platform(util: FunnelUtility, user_df: pd.DataFrame):
+    counts = util.funnel_counts_by_group(
+        user_df, "platform_label", group_order=["iOS", "Android", "Web", "Unknown"]
+    )
+    value_cols = [c for c in counts.columns if c != "Stage"]
+
+    # Counts by platform
+    fig1 = px.funnel(
+        counts, y="Stage", x=value_cols,
+        title="First-Ride Funnel – Counts by Platform"
+    )
+    fig1.update_traces(texttemplate="%{x}", hovertemplate="<b>%{y}</b><br>Users: %{x}<extra></extra>")
+    fig1 = apply_business_layout(fig1, legend_title="Platform")
+    save_and_open(fig1, util, "04_funnel_platform_counts.html")
+
+    # % of previous by platform
+    pct = util.percent_of_previous(counts, value_cols)
+    fig2 = px.funnel(
+        pct, y="Stage", x=value_cols,
+        title="First-Ride Funnel – % of Previous Step by Platform"
+    )
+    fig2.update_traces(texttemplate="%{x:.1f}%", hovertemplate="<b>%{y}</b><br>Conversion: %{x:.2f}%<extra></extra>")
+    fig2.update_xaxes(ticksuffix="%")
+    fig2 = apply_business_layout(fig2, legend_title="Platform")
+    save_and_open(fig2, util, "05_funnel_platform_pct_previous.html")
+
+    # Bottleneck je Plattform (kleine Zusatzanalyse als Tabelle + Plot)
+    rows = []
+    for p in value_cols:
+        cdf = pd.DataFrame({"Stage": counts["Stage"], "Users": counts[p]})
+        conv = util.conversion_table(cdf, col="Users")
+        worst_label, worst_cr = util.worst_step(conv)
+        rows.append({"Platform": p, "Worst step": worst_label, "Min CR (%)": worst_cr})
+
+    bottleneck = pd.DataFrame(rows).sort_values("Min CR (%)")
+    fig3 = px.bar(
+        bottleneck,
+        x="Platform",
+        y="Min CR (%)",
+        title="Bottleneck Strength by Platform (lower = worse)",
+        hover_data=["Worst step"],
+    )
+    fig3 = apply_business_layout(fig3, legend_title="")
+    save_and_open(fig3, util, "06_bottleneck_by_platform.html")
+
+
+def plot_funnel_by_age(util: FunnelUtility, user_df: pd.DataFrame):
+    # Optional feste Reihenfolge (wenn vorhanden)
+    age_order = ["18-24", "25-34", "35-44", "45-54", "Unknown"]
+
+    counts = util.funnel_counts_by_group(user_df, "age_range", group_order=age_order)
+    value_cols = [c for c in counts.columns if c != "Stage"]
+
+    fig1 = px.funnel(
+        counts, y="Stage", x=value_cols,
+        title="First-Ride Funnel – Counts by Age Group"
+    )
+    fig1.update_traces(texttemplate="%{x}", hovertemplate="<b>%{y}</b><br>Users: %{x}<extra></extra>")
+    fig1 = apply_business_layout(fig1, legend_title="Age Group")
+    save_and_open(fig1, util, "07_funnel_age_counts.html")
+
+    pct = util.percent_of_previous(counts, value_cols)
+    fig2 = px.funnel(
+        pct, y="Stage", x=value_cols,
+        title="First-Ride Funnel – % of Previous Step by Age Group"
+    )
+    fig2.update_traces(texttemplate="%{x:.1f}%", hovertemplate="<b>%{y}</b><br>Conversion: %{x:.2f}%<extra></extra>")
+    fig2.update_xaxes(ticksuffix="%")
+    fig2 = apply_business_layout(fig2, legend_title="Age Group")
+    save_and_open(fig2, util, "08_funnel_age_pct_previous.html")
+
+
+def plot_surge(util: FunnelUtility):
+    by_hour = util.requests_per_hour()
+
+    fig1 = px.line(
+        by_hour,
+        x="hour", y="requests",
+        title="Ride Requests – Distribution over the Day (per Hour)",
+        labels={"hour": "Hour of Day", "requests": "Ride Requests"},
+    )
+    fig1.update_xaxes(dtick=1)
+    fig1 = apply_business_layout(fig1, legend_title="")
+    save_and_open(fig1, util, "09_requests_per_hour.html")
+
+    # Heatmap weekday x hour
+    hm = util.requests_weekday_hour()
+    pivot = hm.pivot(index="weekday", columns="hour", values="requests").fillna(0)
+
+    fig2 = px.imshow(
+        pivot,
+        title="Ride Requests – Heatmap (Weekday × Hour)",
+        labels=dict(x="Hour", y="Weekday", color="Requests"),
+        aspect="auto",
+    )
+    fig2 = apply_business_layout(fig2, legend_title="")
+    save_and_open(fig2, util, "10_requests_heatmap_weekday_hour.html")
 
 
 def main():
+    # Wenn eure CSVs in Resources/ liegen -> so lassen
+    # Wenn sie im gleichen Ordner liegen -> data_dir="."
+    util = FunnelUtility(data_dir="Resources", output_dir="output_html")
 
-    question_one_testing_area()
-    question_two_testing_area()
-    question_three_testing_area()
-    question_four_testing_area()
+    # 1) User-Level Tabelle für den First-Ride-Funnel
+    user_df = util.build_first_ride_user_df()
 
+    # 2) Funnel plots + Analyse
+    plot_funnel_overall(util, user_df)
+    plot_funnel_by_platform(util, user_df)
+    plot_funnel_by_age(util, user_df)
 
-def question_one_testing_area():
+    # 3) Nachfrage / Surge-Analyse
+    plot_surge(util)
 
-    data = util.get_funnel_analysis_dataframe()
-    print(data)
-
-    fig = px.bar(data, "Conversion From To", ["Before", "After", "Conversion Rate"], barmode="group")
-    fig.show()
-
-    download_to_signup, signup_to_ride_request, ride_request_to_transaction, transaction_to_approved_transaction = util.full_funnel_analysis()
-
-    print(f"Es gab {download_to_signup.before} Downloads und {download_to_signup.after} Sign Ups! "
-          f"Das ist eine Conversion Rate von {download_to_signup.conversion_rate}!")
-    print(f"Es gab {signup_to_ride_request.before} Sign Ups und {signup_to_ride_request.after} unique Ride Requests! "
-          f"Das ist eine Conversion Rate von {signup_to_ride_request.conversion_rate}!")
-    print(f"Es gab {ride_request_to_transaction.before} Ride Requests und {ride_request_to_transaction.after} Transactions! "
-          f"Das ist eine Conversion Rate von {ride_request_to_transaction.conversion_rate}!")
-    print(f"Es gab {transaction_to_approved_transaction.before} Transactions und {transaction_to_approved_transaction.after} Approved Transactions! "
-          f"Das ist eine Conversion Rate von {transaction_to_approved_transaction.conversion_rate}!")
-    print()
-
-
-
-def question_two_testing_area():
-
-    data = util.get_platform_analysis_dataframe()
-    print(data)
-
-    fig = px.bar(data, "Platform", ["Download Count", "Signed Up User Count", "Download to Sign Up Conversion Rate", "Median Money spent per Ride in $"], barmode="group")
-    fig.show()
-
-    download_count_per_platform = util.get_total_user_downloads_per_platform()
-    signup_count_per_platform = util.get_total_user_signups_per_platform()
-
-    print(f"Von {download_count_per_platform.ios} iOS downloads, haben sich {signup_count_per_platform.ios} Signed Up! "
-          f"Das ist eine Conversion Rate von {util.get_conversion_rate(download_count_per_platform.ios, signup_count_per_platform.ios)}!")
-    print(f"Von {download_count_per_platform.android} Android downloads, haben sich {signup_count_per_platform.android} Signed Up! "
-          f"Das ist eine Conversion Rate von {util.get_conversion_rate(download_count_per_platform.android, signup_count_per_platform.android)}!")
-    print(f"Von {download_count_per_platform.web} Web downloads, haben sich {signup_count_per_platform.web} Signed Up! "
-          f"Das ist eine Conversion Rate von {util.get_conversion_rate(download_count_per_platform.web, signup_count_per_platform.web)}!")
-
-    print()
-
-def question_three_testing_area():
-
-    data = util.get_age_group_analysis_dataframe()
-    print(data)
-
-    fig = px.bar(data, "Age Group", ["Sign Up Count", "Approved Ride Request Count", "Approved Rides per Signed Up User"], barmode="group")
-    fig.show()
-
-    print()
-
-def question_four_testing_area():
-
-    data = util.get_surge_pricing_analysis_dataframe()
-    print(data)
-
-    scatter_data_yearly_time_trend = pd.DataFrame({
-        "Day of Year": data["Day of Year"],
-        "Time": data["Time"],
-        "Hour": data["Hour"]
-    })
-    scatter_data_yearly_time_trend = scatter_data_yearly_time_trend.sort_values("Time", ascending=True)
-    fig = px.scatter(
-        scatter_data_yearly_time_trend,
-        x="Day of Year",
-        y="Time",
-    )
-    fig.show()
-
-
-    scatter_data_day_of_year_trend = pd.DataFrame({
-        "Day of Year": data["Day of Year"],
-    })
-    scatter_data_day_of_year_trend = scatter_data_day_of_year_trend.value_counts().reset_index()
-    scatter_data_day_of_year_trend.columns = ["Day of Year", "Ride Request Count"]
-    #scatter_data_day_of_year_trend = scatter_data_day_of_year_trend.sort_values("Day of Year", ascending=True)
-    fig1 = px.bar(
-        scatter_data_day_of_year_trend,
-        x="Day of Year",
-        y="Ride Request Count"
-    )
-    fig1.show()
-
-
-    weekday_order = [
-        "Monday", "Tuesday", "Wednesday",
-        "Thursday", "Friday", "Saturday", "Sunday"
-    ]
-    scatter_data_weekday_count_trend = pd.DataFrame({
-        "Weekday": data["Weekday"],
-    })
-    scatter_data_weekday_count_trend = scatter_data_weekday_count_trend.value_counts().reset_index()
-    scatter_data_weekday_count_trend.columns = ["Weekday", "Ride Request Count"]
-    scatter_data_weekday_count_trend["Weekday"] = pd.Categorical(scatter_data_weekday_count_trend["Weekday"], categories=weekday_order, ordered=True)
-    scatter_data_weekday_count_trend = scatter_data_weekday_count_trend.sort_values("Weekday", ascending=True)
-    fig2 = px.bar(
-        scatter_data_weekday_count_trend,
-        x="Weekday",
-        y="Ride Request Count"
-    )
-    fig2.show()
+    print("Fertig! HTML-Plots liegen in 'output_html/' und wurden im Browser geöffnet.")
 
 
 if __name__ == "__main__":
