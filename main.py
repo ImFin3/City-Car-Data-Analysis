@@ -15,7 +15,7 @@ def main():
     daily_ride_counts()
     ride_request_per_day_of_year()
     time_per_day_of_year()
-    #pickup_location_density_map()
+    pickup_location_density_map()
     #question_one_testing_area()
     #question_two_testing_area()
     #question_three_testing_area()
@@ -262,13 +262,14 @@ def ride_request_per_day_of_year():
     })
     day_of_year_trend = day_of_year_trend.value_counts().reset_index()
     day_of_year_trend.columns = ["Day of Year", "Ride Request Count"]
-    fig1 = px.bar(
+    fig = px.bar(
         day_of_year_trend,
         x="Day of Year",
         y="Ride Request Count",
         title="Ride Request Count per Day of Year"
     )
-    fig1.show()
+    fig.update_layout(template="plotly_white")
+    fig.show()
 
 def daily_ride_counts():
     data = util.get_daily_ride_count_dataframe()
