@@ -8,10 +8,73 @@ util = Utility()
 
 def main():
 
+    question_julian_testing_area()
     question_one_testing_area()
     question_two_testing_area()
     question_three_testing_area()
     question_four_testing_area()
+
+def question_julian_testing_area():
+
+    #cancelationRatePerAge
+    age_group_cancellations = util.get_cancellation_rate_per_age_group()
+    fig = px.pie(
+        names=age_group_cancellations.index,
+        values=age_group_cancellations.values,
+        title="Cancellation Rate per Age Group"
+    )
+    fig.show()
+
+    ios_rate, android_rate, web_rate = util.get_cancellation_rate_per_platform()
+    fig = px.pie(
+        names=["iOS", "Android", "Web"],
+        values=[ios_rate, android_rate, web_rate],
+        title="Cancellation Rate per Platform"
+    )
+    fig.show()
+
+    #averageReview
+    age_group_ratings = util.get_average_review_rating_per_age_group()
+    fig = px.bar(
+        x=age_group_ratings.index,  # Altersgruppen als x-Achse
+        y=age_group_ratings.values,  # Durchschnittliches Rating als y-Achse
+        labels={'y': 'Average Rating', 'x': 'Age Group'},
+        title="Average Review Rating per Age Group",
+        text_auto=True,
+        barmode='stack'  # Gestapeltes Balkendiagramm
+    )
+    fig.show()
+
+
+    ios_rating, android_rating, web_rating = util.get_average_review_rating_per_platform()
+    fig = px.bar(
+        x=["iOS", "Android", "Web"],
+        y=[ios_rating, android_rating, web_rating],
+        labels={'y': 'Average Rating', 'x': 'Platform'},
+        title="Average Review Rating per Platform",
+        text_auto=True
+    )
+    fig.show()
+
+    #avrageIncome
+    age_18_24, age_25_34, age_35_44, age_45_54, age_unknown = util.get_average_income_per_age_group()
+    fig = px.bar(
+        x=["18-24", "25-34", "35-44", "45-54", "Unknown"],
+        y=[age_18_24, age_25_34, age_35_44, age_45_54, age_unknown],
+        labels={"x": "Age Group", "y": "Average Income (USD)"},
+        title="Average Income per Age Group",
+        text_auto=True
+    )
+    fig.show()
+
+    #signups per agegroup
+    age_18_24, age_25_34, age_35_44, age_45_54, age_unknown = util.get_signed_up_user_count_per_age_group()
+    fig = px.pie(
+        names=["Unknown", "18-24", "25-34", "35-44", "45-54"],
+        values=[age_unknown, age_18_24, age_25_34, age_35_44, age_45_54],
+        title="Signed Up User Count per Age Group"
+    )
+    fig.show()
 
 
 def question_one_testing_area():
