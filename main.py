@@ -7,19 +7,22 @@ util = Utility()
 
 
 def main():
-    full_funnel_analysis_chart_with_counts()
-    full_funnel_analysis_chart_percent_of_the_previous()
-    full_funnel_analysis_chart_percent_of_the_top()
-    comparison_accept_pickup_cancel_duration()
-    cancellation_count_per_hour()
-    daily_ride_counts()
-    ride_request_per_day_of_year()
-    time_per_day_of_year()
-    pickup_location_density_map()
+    #full_funnel_analysis_chart_with_counts()
+    #full_funnel_analysis_chart_percent_of_the_previous()
+    #full_funnel_analysis_chart_percent_of_the_top()
+    #comparison_accept_pickup_cancel_duration()
+    #cancellation_count_per_hour()
+    #request_count_per_hour()
+    #daily_ride_counts()
+    ride_requests_hm_weekday_hour()
+    #ride_request_per_day_of_year()
+    #time_per_day_of_year()
+    #pickup_location_density_map()
     #question_one_testing_area()
     #question_two_testing_area()
     #question_three_testing_area()
     #question_four_testing_area()
+
 
 
 def question_one_testing_area():
@@ -224,10 +227,28 @@ def cancellation_count_per_hour():
     fig = px.line(data,
                   x="hour",
                   y="cancel_count",
-                  title="Cancel Count per Hour overall",
+                  title="Cancellation - Distribution over the Day (per Hour)",
                   labels={
                       "hour": "Hour",
-                      "cancel_count": "Cancellation Count"
+                      "cancel_count": "Cancellations"
+                  })
+    fig.update_layout(template="plotly_white")
+    fig.update_xaxes(
+        dtick="H1",
+        tickformat="%H"
+    )
+    fig.show()
+
+def request_count_per_hour():
+    data = util.get_request_count_per_hour_dataframe()
+
+    fig = px.line(data,
+                  x="hour",
+                  y="request_count",
+                  title="Ride Requests - Distribution over the Day (per Hour)",
+                  labels={
+                      "hour": "Hour",
+                      "request_count": "Ride Requests"
                   })
     fig.update_layout(template="plotly_white")
     fig.update_xaxes(
@@ -286,9 +307,22 @@ def daily_ride_counts():
     )
     fig.show()
 
+def ride_requests_hm_weekday_hour():
+    hm = util.get_ride_requests_count_per_weekday_and_hour_dataframe()
+    pivot = hm.pivot(index="Weekday", columns="Hour", values="requests").fillna(0)
+
+    fig = px.imshow(
+        pivot,
+        title="Ride Requests – Heatmap (Weekday × Hour)",
+        labels=dict(x="Hour", y="Weekday", color="Requests"),
+        aspect="auto",
+    )
+    fig.update_layout(template="plotly_white")
+    fig.show()
+
+
 def pickup_location_density_map():
     data = util.get_all_pickup_locations_dataframe()
-    print(data)
 
     fig = px.density_map(
         data,
