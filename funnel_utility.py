@@ -239,3 +239,74 @@ class Utility:
         return self.ConversionStruct(start, end, self.get_conversion_rate(start, end))
 
     #endregion
+
+    #Von Julian
+        def get_cancellation_rate_per_platform(self):
+        merged_df = pd.merge(self.signups_df, self.ride_requests_df, on="user_id", how="inner")
+        merged_df = pd.merge(merged_df, self.downloads_df, left_on="session_id", right_on="app_download_key",how="inner")
+        platforms = ["ios", "android", "web"]
+        cancellation_rates = {}
+        for platform in platforms:
+            platform_df = merged_df[merged_df["platform"] == platform]
+            total_requests = len(platform_df)
+            canceled_requests = len(platform_df[platform_df["cancel_ts"].notnull()])
+            if total_requests > 0:
+                cancellation_rate = canceled_requests / total_requests
+            else:
+                cancellation_rate = 0
+            cancellation_rates[platform] = cancellation_rate
+            print(cancellation_rate)
+        return cancellation_rates["ios"], cancellation_rates["android"], cancellation_rates["web"]
+
+    def get_average_review_rating_per_platform(self):
+        merged_reviews = pd.merge(self.reviews_df, self.signups_df, on='user_id')
+        merged_reviews = pd.merge(merged_reviews, self.downloads_df, left_on='session_id', right_on='app_download_key')
+        average_ratings = merged_reviews.groupby('platform')['rating'].mean().to_dict()
+        ios_rating = average_ratings.get('ios', 0)
+        android_rating = average_ratings.get('android', 0)
+        web_rating = average_ratings.get('web', 0)
+        return ios_rating, android_rating, web_rating
+
+    def get_cancellation_rate_per_age_group(self):
+        merged_df = pd.merge(self.ride_requests_df, self.signups_df, on='user_id')
+        merged_df['canceled'] = merged_df['cancel_ts'].notnull()
+        cancellation_rate_per_age_group = merged_df.groupby('age_range')['canceled'].mean()
+        return cancellation_rate_per_age_group
+
+    def get_average_review_rating_per_age_group(self):
+        merged_reviews = pd.merge(self.reviews_df, self.signups_df, on='user_id')
+        average_ratings_per_age_group = merged_reviews.groupby('age_range')['rating'].mean()
+        return average_ratings_per_age_group
+
+    def get_average_income_per_age_group(self):
+        approved_tx = self.transactions_df[self.transactions_df["charge_status"] == "Approved"]
+        tx_with_user = pd.merge(
+            approved_tx,
+            self.ride_requests_df[["ride_id", "user_id"]],
+            on="ride_id",
+            how="inner"
+        )
+        full = pd.merge(
+            tx_with_user,
+            self.signups_df[["user_id", "age_range"]],
+            on="user_id",
+            how="inner"
+        )
+        avg_income = full.groupby("age_range")["purchase_amount_usd"].mean().to_dict()
+        return (
+            avg_income.get("18-24", 0.0),
+            avg_income.get("25-34", 0.0),
+            avg_income.get("35-44", 0.0),
+            avg_income.get("45-54", 0.0),
+            avg_income.get("Unknown", 0.0),
+        )
+
+    def get_signed_up_user_count_per_age_group(self):
+        counts = self.signups_df["age_range"].value_counts(dropna=False).to_dict()
+        return (
+            int(counts.get("18-24", 0)),
+            int(counts.get("25-34", 0)),
+            int(counts.get("35-44", 0)),
+            int(counts.get("45-54", 0)),
+            int(counts.get("Unknown", 0)),
+        )
