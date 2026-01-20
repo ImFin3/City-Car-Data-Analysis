@@ -1,28 +1,36 @@
 import pandas as pd
-
-from funnel_utility import Utility
 import plotly.express as px
+from pathlib import Path
+from funnel_utility import Utility
+
 
 util = Utility()
 
 
 def main():
-    #full_funnel_analysis_chart_with_counts()
-    #full_funnel_analysis_chart_percent_of_the_previous()
-    #full_funnel_analysis_chart_percent_of_the_top()
-    #comparison_accept_pickup_cancel_duration()
-    #cancellation_count_per_hour()
-    #request_count_per_hour()
-    #daily_ride_counts()
+    full_funnel_analysis_chart_with_counts()
+    full_funnel_analysis_chart_percent_of_the_previous()
+    full_funnel_analysis_chart_percent_of_the_top()
+    comparison_accept_pickup_cancel_duration()
+    cancellation_count_per_hour()
+    request_count_per_hour()
+    daily_ride_counts()
     ride_requests_hm_weekday_hour()
-    #ride_request_per_day_of_year()
-    #time_per_day_of_year()
-    #pickup_location_density_map()
+    ride_request_per_day_of_year()
+    time_per_day_of_year()
+    pickup_location_density_map()
     #question_one_testing_area()
     #question_two_testing_area()
     #question_three_testing_area()
     #question_four_testing_area()
 
+def save_and_open(fig, filename: str):
+    out_dir = Path("output_html")
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    path = out_dir / filename
+
+    fig.write_html(str(path), auto_open=True, include_plotlyjs="cdn")
 
 
 def question_one_testing_area():
@@ -77,7 +85,7 @@ def question_three_testing_area():
 
 def question_four_testing_area():
 
-    data = util.get_surge_pricing_analysis_dataframe()
+    data = util.get_ride_requests_ts_split_dataframe()
 
     scatter_data_yearly_time_trend = pd.DataFrame({
         "Day of Year": data["Day of Year"],
@@ -135,7 +143,7 @@ def full_funnel_analysis_chart_with_counts():
 
     )
     fig.update_layout(template="plotly_white")
-    fig.show()
+    save_and_open(fig, "full_funnel_analysis_chart_with_counts.html")
 
 def full_funnel_analysis_chart_percent_of_the_previous():
     percentage_data = util.get_full_funnel_analysis_dataframe()
@@ -168,7 +176,7 @@ def full_funnel_analysis_chart_percent_of_the_previous():
     fig.update_layout(template="plotly_white")
     fig.update_xaxes(ticksuffix="%")
 
-    fig.show()
+    save_and_open(fig, "full_funnel_analysis_chart_percent_of_the_previous.html")
 
 def full_funnel_analysis_chart_percent_of_the_top():
     percentage_data = util.get_full_funnel_analysis_dataframe()
@@ -205,7 +213,7 @@ def full_funnel_analysis_chart_percent_of_the_top():
     fig.update_layout(template="plotly_white")
     fig.update_xaxes(ticksuffix="%")
 
-    fig.show()
+    save_and_open(fig, "full_funnel_analysis_chart_percent_of_the_top.html")
 
 def comparison_accept_pickup_cancel_duration():
     data = util.get_accept_cancel_pickup_duration_dataframe()
@@ -219,7 +227,7 @@ def comparison_accept_pickup_cancel_duration():
                  title="Comparison Accept, Pickup, Cancel Duration",
                  color="variable")
     fig.update_layout(template="plotly_white")
-    fig.show()
+    save_and_open(fig, "comparison_accept_pickup_cancel_duration.html")
 
 def cancellation_count_per_hour():
     data = util.get_cancel_count_per_hour_dataframe()
@@ -237,7 +245,7 @@ def cancellation_count_per_hour():
         dtick="H1",
         tickformat="%H"
     )
-    fig.show()
+    save_and_open(fig, "cancellation_count_per_hour.html")
 
 def request_count_per_hour():
     data = util.get_request_count_per_hour_dataframe()
@@ -255,10 +263,10 @@ def request_count_per_hour():
         dtick="H1",
         tickformat="%H"
     )
-    fig.show()
+    save_and_open(fig, "request_count_per_hour.html")
 
 def time_per_day_of_year():
-    data = util.get_surge_pricing_analysis_dataframe()
+    data = util.get_ride_requests_ts_split_dataframe()
 
     scatter_data_yearly_time_trend = pd.DataFrame({
         "Day of Year": data["Day of Year"],
@@ -273,10 +281,10 @@ def time_per_day_of_year():
         title="Ride Request Time per Day of Year"
     )
     fig.update_layout(template="plotly_white")
-    fig.show()
+    save_and_open(fig, "time_per_day_of_year.html")
 
 def ride_request_per_day_of_year():
-    data = util.get_surge_pricing_analysis_dataframe()
+    data = util.get_ride_requests_ts_split_dataframe()
 
     day_of_year_trend = pd.DataFrame({
         "Day of Year": data["Day of Year"],
@@ -290,7 +298,7 @@ def ride_request_per_day_of_year():
         title="Ride Request Count per Day of Year"
     )
     fig.update_layout(template="plotly_white")
-    fig.show()
+    save_and_open(fig, "ride_request_per_day_of_year.html")
 
 def daily_ride_counts():
     data = util.get_daily_ride_count_dataframe()
@@ -305,7 +313,7 @@ def daily_ride_counts():
         dtick="M1",
         tickformat="%Y-%m"
     )
-    fig.show()
+    save_and_open(fig, "daily_ride_counts.html")
 
 def ride_requests_hm_weekday_hour():
     hm = util.get_ride_requests_count_per_weekday_and_hour_dataframe()
@@ -318,8 +326,7 @@ def ride_requests_hm_weekday_hour():
         aspect="auto",
     )
     fig.update_layout(template="plotly_white")
-    fig.show()
-
+    save_and_open(fig, "ride_requests_hm_weekday_hour.html")
 
 def pickup_location_density_map():
     data = util.get_all_pickup_locations_dataframe()
@@ -332,10 +339,7 @@ def pickup_location_density_map():
         radius=8,
     )
 
-    fig.show()
-
-
-
+    save_and_open(fig, "pickup_location_density_map.html")
 
 
 if __name__ == "__main__":
