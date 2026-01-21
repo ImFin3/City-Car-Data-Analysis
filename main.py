@@ -1,15 +1,18 @@
 import pandas as pd
 import plotly.express as px
-from pathlib import Path
 from funnel_utility import Utility
 
 
 util = Utility()
 
+# Alle Plots werden in einem automatisch erstelltem Ordner "output_html" abgespeichert, dort können sie einzeln geöffnet werden ohne das Programm nochmal durchlaufen zu lassen
+# Um den Browser nicht direkt vollzuspammen auto_open_all_plots auf False setzen
+auto_open_all_plots = True
 
 def main():
     overall_funnel_analysis_chart_with_counts()
-    full_funnel_analysis_chart_with_counts()
+    overall_funnel_analysis_chart_percent_of_the_previous()
+    #full_funnel_analysis_chart_with_counts()
     #full_funnel_analysis_chart_percent_of_the_previous()
     #full_funnel_analysis_chart_percent_of_the_top()
     #comparison_accept_pickup_cancel_duration()
@@ -27,14 +30,6 @@ def main():
     #time_per_day_of_year()
     #pickup_location_density_map()
 
-def save_and_open(fig, filename: str):
-    out_dir = Path("output_html")
-    out_dir.mkdir(parents=True, exist_ok=True)
-
-    path = out_dir / filename
-
-    fig.write_html(str(path), auto_open=True, include_plotlyjs="cdn")
-
 def overall_funnel_analysis_chart_with_counts():
     data = util.get_overall_funnel_analysis_dataframe()
 
@@ -45,8 +40,35 @@ def overall_funnel_analysis_chart_with_counts():
                       "Count: %{x}"
 
     )
-    fig.update_layout(template="plotly_white")
-    save_and_open(fig, "overall_funnel_analysis_chart_with_counts.html")
+    fig = util.apply_constant_plot_layout(fig, )
+    util.save_and_open(fig, "overall_funnel_analysis_chart_with_counts.html", auto_open_all_plots)
+
+def overall_funnel_analysis_chart_percent_of_the_previous():
+    percentage_data = util.get_overall_funnel_analysis_dataframe()
+
+    percentage_data["Overall"] = percentage_data["Overall"].astype(float)
+
+    shifted_data = percentage_data["Overall"].shift(1)
+    for index in percentage_data.index:
+        percentage_data.loc[index, "Overall"] = percentage_data["Overall"][index] / shifted_data[index] * 100
+    percentage_data.loc[percentage_data.index[0], "Overall"] = 100
+
+    fig = px.funnel(
+        percentage_data,
+        x="Overall",
+        y="Stage",
+        title="Overall Conversion Rate - Percent of the previous"
+    )
+    fig.update_traces(
+        texttemplate="%{x:.1f}%",
+        hovertemplate="<b>%{y}</b><br>"
+                      "Conversion: %{x}"
+
+    )
+    fig.update_xaxes(ticksuffix="%")
+
+    fig = util.apply_constant_plot_layout(fig)
+    util.save_and_open(fig, "overall_funnel_analysis_chart_percent_of_the_previous.html", auto_open_all_plots)
 
 def full_funnel_analysis_chart_with_counts():
     data = util.get_full_funnel_analysis_dataframe()
@@ -58,8 +80,8 @@ def full_funnel_analysis_chart_with_counts():
                       "Count: %{x}"
 
     )
-    fig.update_layout(template="plotly_white")
-    save_and_open(fig, "full_funnel_analysis_chart_with_counts.html")
+    fig = util.apply_constant_plot_layout(fig)
+    util.save_and_open(fig, "full_funnel_analysis_chart_with_counts.html", auto_open_all_plots)
 
 def full_funnel_analysis_chart_percent_of_the_previous():
     percentage_data = util.get_full_funnel_analysis_dataframe()
@@ -89,10 +111,10 @@ def full_funnel_analysis_chart_percent_of_the_previous():
                       "Conversion: %{x}"
 
     )
-    fig.update_layout(template="plotly_white")
     fig.update_xaxes(ticksuffix="%")
 
-    save_and_open(fig, "full_funnel_analysis_chart_percent_of_the_previous.html")
+    fig = util.apply_constant_plot_layout(fig)
+    util.save_and_open(fig, "full_funnel_analysis_chart_percent_of_the_previous.html", auto_open_all_plots)
 
 def full_funnel_analysis_chart_percent_of_the_top():
     percentage_data = util.get_full_funnel_analysis_dataframe()
@@ -126,10 +148,10 @@ def full_funnel_analysis_chart_percent_of_the_top():
         hovertemplate="<b>%{y}</b><br>"
                       "Conversion: %{x}"
     )
-    fig.update_layout(template="plotly_white")
     fig.update_xaxes(ticksuffix="%")
 
-    save_and_open(fig, "full_funnel_analysis_chart_percent_of_the_top.html")
+    fig = util.apply_constant_plot_layout(fig)
+    util.save_and_open(fig, "full_funnel_analysis_chart_percent_of_the_top.html", auto_open_all_plots)
 
 def comparison_accept_pickup_cancel_duration():
     data = util.get_accept_cancel_pickup_duration_dataframe()
@@ -142,8 +164,9 @@ def comparison_accept_pickup_cancel_duration():
                  },
                  title="Comparison Accept, Pickup, Cancel Duration",
                  color="variable")
-    fig.update_layout(template="plotly_white")
-    save_and_open(fig, "comparison_accept_pickup_cancel_duration.html")
+
+    fig = util.apply_constant_plot_layout(fig)
+    util.save_and_open(fig, "comparison_accept_pickup_cancel_duration.html", auto_open_all_plots)
 
 def cancellation_count_per_hour():
     data = util.get_cancel_count_per_hour_dataframe()
@@ -156,12 +179,13 @@ def cancellation_count_per_hour():
                       "hour": "Hour",
                       "cancel_count": "Cancellations"
                   })
-    fig.update_layout(template="plotly_white")
     fig.update_xaxes(
         dtick="H1",
         tickformat="%H"
     )
-    save_and_open(fig, "cancellation_count_per_hour.html")
+
+    fig = util.apply_constant_plot_layout(fig)
+    util.save_and_open(fig, "cancellation_count_per_hour.html", auto_open_all_plots)
 
 def request_count_per_hour():
     data = util.get_request_count_per_hour_dataframe()
@@ -174,12 +198,13 @@ def request_count_per_hour():
                       "hour": "Hour",
                       "request_count": "Ride Requests"
                   })
-    fig.update_layout(template="plotly_white")
     fig.update_xaxes(
         dtick="H1",
         tickformat="%H"
     )
-    save_and_open(fig, "request_count_per_hour.html")
+
+    fig = util.apply_constant_plot_layout(fig)
+    util.save_and_open(fig, "request_count_per_hour.html", auto_open_all_plots)
 
 def time_per_day_of_year():
     data = util.get_ride_requests_ts_split_dataframe()
@@ -196,8 +221,9 @@ def time_per_day_of_year():
         y="Time",
         title="Ride Request Time per Day of Year"
     )
-    fig.update_layout(template="plotly_white")
-    save_and_open(fig, "time_per_day_of_year.html")
+
+    fig = util.apply_constant_plot_layout(fig)
+    util.save_and_open(fig, "time_per_day_of_year.html", auto_open_all_plots)
 
 def ride_request_per_day_of_year():
     data = util.get_ride_requests_ts_split_dataframe()
@@ -213,8 +239,9 @@ def ride_request_per_day_of_year():
         y="Ride Request Count",
         title="Ride Request Count per Day of Year"
     )
-    fig.update_layout(template="plotly_white")
-    save_and_open(fig, "ride_request_per_day_of_year.html")
+
+    fig = util.apply_constant_plot_layout(fig)
+    util.save_and_open(fig, "ride_request_per_day_of_year.html", auto_open_all_plots)
 
 def daily_ride_counts():
     data = util.get_daily_ride_count_dataframe()
@@ -224,12 +251,13 @@ def daily_ride_counts():
                   y="ride_count",
                   title="Daily Ride Request Count",
                   labels={"day": "Month", "ride_count": "Ride Count"})
-    fig.update_layout(template="plotly_white")
     fig.update_xaxes(
         dtick="M1",
         tickformat="%Y-%m"
     )
-    save_and_open(fig, "daily_ride_counts.html")
+
+    fig = util.apply_constant_plot_layout(fig)
+    util.save_and_open(fig, "daily_ride_counts.html", auto_open_all_plots)
 
 def ride_requests_hm_weekday_hour():
     hm = util.get_ride_requests_count_per_weekday_and_hour_dataframe()
@@ -241,8 +269,9 @@ def ride_requests_hm_weekday_hour():
         labels=dict(x="Hour", y="Weekday", color="Requests"),
         aspect="auto",
     )
-    fig.update_layout(template="plotly_white")
-    save_and_open(fig, "ride_requests_hm_weekday_hour.html")
+
+    fig = util.apply_constant_plot_layout(fig)
+    util.save_and_open(fig, "ride_requests_hm_weekday_hour.html", auto_open_all_plots)
 
 def pickup_location_density_map():
     data = util.get_all_pickup_locations_dataframe()
@@ -253,9 +282,11 @@ def pickup_location_density_map():
         lon="lon",
         zoom=10,
         radius=8,
+        title="Pickup Location Density Map"
     )
 
-    save_and_open(fig, "pickup_location_density_map.html")
+    fig = util.apply_constant_plot_layout(fig)
+    util.save_and_open(fig, "pickup_location_density_map.html", auto_open_all_plots)
 
 def cancellation_rate_per_age_group():
     age_group_cancellations = util.get_cancellation_rate_per_age_group()
@@ -264,7 +295,9 @@ def cancellation_rate_per_age_group():
         values=age_group_cancellations.values,
         title="Cancellation Rate per Age Group"
     )
-    save_and_open(fig, "cancellation_rate_per_age_group.html")
+
+    fig = util.apply_constant_plot_layout(fig)
+    util.save_and_open(fig, "cancellation_rate_per_age_group.html", auto_open_all_plots)
 
 def cancellation_rate_per_platform():
     ios_rate, android_rate, web_rate = util.get_cancellation_rate_per_platform()
@@ -273,7 +306,9 @@ def cancellation_rate_per_platform():
         values=[ios_rate, android_rate, web_rate],
         title="Cancellation Rate per Platform"
     )
-    save_and_open(fig, "cancellation_rate_per_platform.html")
+
+    fig = util.apply_constant_plot_layout(fig)
+    util.save_and_open(fig, "cancellation_rate_per_platform.html", auto_open_all_plots)
 
 def average_review_rating_per_age_group():
     age_group_ratings = util.get_average_review_rating_per_age_group()
@@ -284,8 +319,9 @@ def average_review_rating_per_age_group():
         title="Average Review Rating per Age Group",
         text_auto=True,
     )
-    fig.update_layout(template="plotly_white")
-    save_and_open(fig, "average_review_rating_per_age_group.html")
+
+    fig = util.apply_constant_plot_layout(fig)
+    util.save_and_open(fig, "average_review_rating_per_age_group.html", auto_open_all_plots)
 
 def average_review_rating_per_platform():
     ios_rating, android_rating, web_rating = util.get_average_review_rating_per_platform()
@@ -296,8 +332,9 @@ def average_review_rating_per_platform():
         title="Average Review Rating per Platform",
         text_auto=True
     )
-    fig.update_layout(template="plotly_white")
-    save_and_open(fig, "average_review_rating_per_platform.html")
+
+    fig = util.apply_constant_plot_layout(fig)
+    util.save_and_open(fig, "average_review_rating_per_platform.html", auto_open_all_plots)
 
 def average_income_per_age_group():
     age_18_24, age_25_34, age_35_44, age_45_54, age_unknown = util.get_average_income_per_age_group()
@@ -308,8 +345,9 @@ def average_income_per_age_group():
         title="Average Income per Age Group",
         text_auto=True
     )
-    fig.update_layout(template="plotly_white")
-    save_and_open(fig, "average_income_per_age_group.html")
+
+    fig = util.apply_constant_plot_layout(fig)
+    util.save_and_open(fig, "average_income_per_age_group.html", auto_open_all_plots)
 
 def signups_per_age_group():
     age_18_24, age_25_34, age_35_44, age_45_54, age_unknown = util.get_signed_up_user_count_per_age_group()
@@ -318,7 +356,9 @@ def signups_per_age_group():
         values=[age_unknown, age_18_24, age_25_34, age_35_44, age_45_54],
         title="Signed Up User Count per Age Group"
     )
-    save_and_open(fig, "signups_per_age_group.html")
+
+    fig = util.apply_constant_plot_layout(fig)
+    util.save_and_open(fig, "signups_per_age_group.html", auto_open_all_plots)
 
 
 if __name__ == "__main__":

@@ -1,4 +1,6 @@
 import pandas as pd
+import plotly.express as px
+from pathlib import Path
 from dataclasses import dataclass
 
 class Utility:
@@ -720,4 +722,32 @@ class Utility:
     def get_conversion_rate(start: int, end: int) -> float:
         return end / start * 100
 
+    #endregion
+    
+    #region Utility Functions
+    @staticmethod
+    def save_and_open(fig, filename: str, auto_open: bool = True):
+        out_dir = Path("output_html")
+        out_dir.mkdir(parents=True, exist_ok=True)
+
+        path = out_dir / filename
+
+        fig.write_html(str(path), auto_open=auto_open, include_plotlyjs="cdn")
+
+    @staticmethod
+    def apply_constant_plot_layout(fig):
+        fig.update_layout(
+            template="plotly_white",
+            font=dict(size=15),
+            title=dict(font=dict(size=20)),
+            legend=dict(
+                font=dict(size=13),
+                bgcolor="rgba(255,255,255,0.85)",
+                bordercolor="rgba(0,0,0,0.10)",
+                borderwidth=2
+            ),
+            margin=dict(l=70, r=40, t=80, b=70),
+        )
+        return fig
+    
     #endregion
