@@ -40,14 +40,13 @@ class Utility:
 
 
     #region Funnel Analysis
-    def get_detailed_overall_funnel_analysis_dataframe(self) -> pd.DataFrame:
-        f_a = self.get_detailed_overall_funnel_analysis()   # f_a => funnel_analysis
+    def get_overall_funnel_analysis_dataframe(self) -> pd.DataFrame:
 
         df = pd.DataFrame({
-            "Conversion From To": ["Download to Sign Ups", "Sign Ups to unique User Ride Requests", "Ride Requests to Transactions", "Transactions to Approved Transactions"],
-            "Before": [f_a[0].before, f_a[1].before, f_a[2].before, f_a[3].before],
-            "After": [f_a[0].after, f_a[1].after, f_a[2].after, f_a[3].after],
-            "Conversion Rate": [f_a[0].conversion_rate, f_a[1].conversion_rate, f_a[2].conversion_rate, f_a[3].conversion_rate]
+            "Stage": ["Downloads", "Sign ups", "Ride requests created", "Ride Requests accepted",
+                      "Pickups happened", "Dropoffs happened", "Transactions created", "Transactions approved"],
+            "Overall": [self.get_download_count(), self.get_signup_count(), self.get_ride_requests_count(), self.get_ride_request_accepted_count(),
+                      self.get_ride_request_pickup_count(), self.get_ride_request_dropoff_count(), self.get_transaction_count(), self.get_approved_transactions_count()]
         })
 
         return df
@@ -59,8 +58,8 @@ class Utility:
         df = pd.DataFrame({
             "Stage": ["Downloads", "Sign ups", "First ride request created", "First request accepted",
                       "First pickup happened", "First dropoff happened", "First transaction created", "First Payment approved"],
-            "Overall": [self.get_download_count(), self.get_signup_count(), self.get_first_user_ride_request_count(), self.get_first_request_accepted_count(),
-                        self.get_first_pickup_count(), self.get_first_dropoff_count(), self.get_first_user_transaction_count(), self.get_first_approved_transaction_count()],
+            "Overall": [self.get_download_count(), self.get_signup_count(), self.get_first_ride_request_count(), self.get_first_ride_request_accepted_count(),
+                        self.get_first_ride_request_pickup_count(), self.get_first_ride_request_dropoff_count(), self.get_first_transaction_count(), self.get_first_approved_transaction_count()],
             "IOS": [platforms[0].ios, platforms[1].ios, platforms[2].ios, platforms[3].ios,
                     platforms[4].ios, platforms[5].ios, platforms[6].ios, platforms[7].ios],
             "Android": [platforms[0].android, platforms[1].android, platforms[2].android, platforms[3].android,
@@ -80,23 +79,6 @@ class Utility:
         })
 
         return df
-
-    def get_detailed_overall_funnel_analysis(self) -> tuple[ConversionStruct, ConversionStruct, ConversionStruct, ConversionStruct]:
-
-        return (self.get_conversion_rate_download_to_signups(), self.get_conversion_rate_signups_to_unique_user_ride_requests(),
-                self.get_conversion_rate_ride_requests_to_transactions(), self.get_conversion_rate_transactions_to_approved_transactions())
-
-    def get_conversion_rate_download_to_signups(self) -> ConversionStruct:
-        return self.get_conversion_rate_struct(self.get_download_count(), self.get_signup_count())
-
-    def get_conversion_rate_signups_to_unique_user_ride_requests(self) -> ConversionStruct:
-        return self.get_conversion_rate_struct(self.get_signup_count(), self.get_first_user_ride_request_count())
-
-    def get_conversion_rate_ride_requests_to_transactions(self) -> ConversionStruct:
-        return self.get_conversion_rate_struct(self.get_ride_requests_count(), self.get_transaction_count())
-
-    def get_conversion_rate_transactions_to_approved_transactions(self) -> ConversionStruct:
-        return self.get_conversion_rate_struct(self.get_transaction_count(), self.get_approved_transactions_count())
 
     def get_accept_cancel_pickup_duration_dataframe(self) -> pd.DataFrame:
         time_cols = [
@@ -319,6 +301,32 @@ class Utility:
 
         return self.MoneySpentPerPlatform(float(median_ios), float(median_android), float(median_web))
 
+    def get_cancellation_rate_per_platform(self):
+        merged_df = pd.merge(self.signups_df, self.ride_requests_df, on="user_id", how="inner")
+        merged_df = pd.merge(merged_df, self.downloads_df, left_on="session_id", right_on="app_download_key",
+                             how="inner")
+        platforms = ["ios", "android", "web"]
+        cancellation_rates = {}
+        for platform in platforms:
+            platform_df = merged_df[merged_df["platform"] == platform]
+            total_requests = len(platform_df)
+            canceled_requests = len(platform_df[platform_df["cancel_ts"].notnull()])
+            if total_requests > 0:
+                cancellation_rate = canceled_requests / total_requests
+            else:
+                cancellation_rate = 0
+            cancellation_rates[platform] = cancellation_rate
+        return cancellation_rates["ios"], cancellation_rates["android"], cancellation_rates["web"]
+
+    def get_average_review_rating_per_platform(self):
+        merged_reviews = pd.merge(self.reviews_df, self.signups_df, on='user_id')
+        merged_reviews = pd.merge(merged_reviews, self.downloads_df, left_on='session_id', right_on='app_download_key')
+        average_ratings = merged_reviews.groupby('platform')['rating'].mean().to_dict()
+        ios_rating = average_ratings.get('ios', 0)
+        android_rating = average_ratings.get('android', 0)
+        web_rating = average_ratings.get('web', 0)
+        return ios_rating, android_rating, web_rating
+
 
     #endregion
 
@@ -537,6 +545,50 @@ class Utility:
 
         return age_distribution
 
+    def get_cancellation_rate_per_age_group(self):
+        merged_df = pd.merge(self.ride_requests_df, self.signups_df, on='user_id')
+        merged_df['canceled'] = merged_df['cancel_ts'].notnull()
+        cancellation_rate_per_age_group = merged_df.groupby('age_range')['canceled'].mean()
+        return cancellation_rate_per_age_group
+
+    def get_average_review_rating_per_age_group(self):
+        merged_reviews = pd.merge(self.reviews_df, self.signups_df, on='user_id')
+        average_ratings_per_age_group = merged_reviews.groupby('age_range')['rating'].mean()
+        return average_ratings_per_age_group
+
+    def get_average_income_per_age_group(self):
+        approved_tx = self.transactions_df[self.transactions_df["charge_status"] == "Approved"]
+        tx_with_user = pd.merge(
+            approved_tx,
+            self.ride_requests_df[["ride_id", "user_id"]],
+            on="ride_id",
+            how="inner"
+        )
+        full = pd.merge(
+            tx_with_user,
+            self.signups_df[["user_id", "age_range"]],
+            on="user_id",
+            how="inner"
+        )
+        avg_income = full.groupby("age_range")["purchase_amount_usd"].mean().to_dict()
+        return (
+            avg_income.get("18-24", 0.0),
+            avg_income.get("25-34", 0.0),
+            avg_income.get("35-44", 0.0),
+            avg_income.get("45-54", 0.0),
+            avg_income.get("Unknown", 0.0),
+        )
+
+    def get_signed_up_user_count_per_age_group(self):
+        counts = self.signups_df["age_range"].value_counts(dropna=False).to_dict()
+        return (
+            int(counts.get("18-24", 0)),
+            int(counts.get("25-34", 0)),
+            int(counts.get("35-44", 0)),
+            int(counts.get("45-54", 0)),
+            int(counts.get("Unknown", 0)),
+        )
+
     #endregion
 
     #region Surge Pricing Analysis
@@ -627,22 +679,31 @@ class Utility:
     def get_ride_requests_count(self) -> int:
         return self.ride_requests_df.shape[0]
 
-    def get_first_user_ride_request_count(self) -> int:
+    def get_first_ride_request_count(self) -> int:
         return self.ride_requests_df["user_id"].nunique()
 
-    def get_first_request_accepted_count(self) -> int:
+    def get_ride_request_accepted_count(self) -> int:
+        return self.ride_requests_df[self.ride_requests_df["accept_ts"].notna()]["user_id"].count()
+
+    def get_first_ride_request_accepted_count(self) -> int:
         return self.ride_requests_df[self.ride_requests_df["accept_ts"].notna()]["user_id"].nunique()
 
-    def get_first_pickup_count(self) -> int:
+    def get_ride_request_pickup_count(self) -> int:
+        return self.ride_requests_df[self.ride_requests_df["pickup_ts"].notna()]["user_id"].count()
+
+    def get_first_ride_request_pickup_count(self) -> int:
         return self.ride_requests_df[self.ride_requests_df["pickup_ts"].notna()]["user_id"].nunique()
 
-    def get_first_dropoff_count(self) -> int:
+    def get_ride_request_dropoff_count(self) -> int:
+        return self.ride_requests_df[self.ride_requests_df["dropoff_ts"].notna()]["user_id"].count()
+
+    def get_first_ride_request_dropoff_count(self) -> int:
         return self.ride_requests_df[self.ride_requests_df["dropoff_ts"].notna()]["user_id"].nunique()
 
     def get_transaction_count(self) -> int:
         return self.transactions_df.shape[0]
 
-    def get_first_user_transaction_count(self) -> int:
+    def get_first_transaction_count(self) -> int:
         merged = pd.merge(self.ride_requests_df, self.transactions_df, on="ride_id", how="inner")
 
         return merged["user_id"].nunique()
@@ -658,8 +719,5 @@ class Utility:
     @staticmethod
     def get_conversion_rate(start: int, end: int) -> float:
         return end / start * 100
-
-    def get_conversion_rate_struct(self, start: int, end: int) -> ConversionStruct:
-        return self.ConversionStruct(start, end, self.get_conversion_rate(start, end))
 
     #endregion
