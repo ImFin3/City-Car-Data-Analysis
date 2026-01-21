@@ -5,8 +5,8 @@ from funnel_utility import Utility
 
 util = Utility()
 
-# Alle Plots werden in einem automatisch erstelltem Ordner "output_html" abgespeichert, dort können sie einzeln geöffnet werden ohne das Programm nochmal durchlaufen zu lassen
-# Um den Browser nicht direkt vollzuspammen auto_open_all_plots auf False setzen
+# Alle Plots werden in einem automatisch erstelltem Ordner "output_html" abgespeichert, dort können sie einzeln geöffnet werden, ohne das Programm nochmal durchlaufen zu lassen
+# Um den Browser nicht direkt vollzuspammen → auto_open_all_plots auf False setzen
 auto_open_all_plots = True
 
 def main():
