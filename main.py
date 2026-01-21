@@ -11,25 +11,25 @@ auto_open_all_plots = True
 
 def main():
     print("Hello World!")
-    #overall_funnel_analysis_chart_with_counts()
-    #overall_funnel_analysis_chart_percent_of_the_previous()
+    overall_funnel_analysis_chart_with_counts()
+    overall_funnel_analysis_chart_percent_of_the_previous()
     full_funnel_analysis_chart_with_counts()
-    #full_funnel_analysis_chart_percent_of_the_previous()
-    #full_funnel_analysis_chart_percent_of_the_top()
-    #comparison_accept_pickup_cancel_duration()
-    #cancellation_count_per_hour()
-    #request_count_per_hour()
-    #cancellation_rate_per_platform()
-    #average_review_rating_per_platform()
-    #cancellation_rate_per_age_group()
-    #average_review_rating_per_age_group()
-    #average_income_per_age_group()
-    #signups_per_age_group()
-    #daily_ride_counts()
-    #ride_requests_hm_weekday_hour()
-    #ride_request_per_day_of_year()
-    #time_per_day_of_year()
-    #pickup_location_density_map()
+    full_funnel_analysis_chart_percent_of_the_previous()
+    full_funnel_analysis_chart_percent_of_the_top()
+    comparison_accept_pickup_cancel_duration()
+    cancellation_count_per_hour()
+    request_count_per_hour()
+    cancellation_rate_per_platform()
+    average_review_rating_per_platform()
+    cancellation_rate_per_age_group()
+    average_review_rating_per_age_group()
+    average_income_per_age_group()
+    signups_per_age_group()
+    daily_ride_counts()
+    ride_requests_hm_weekday_hour()
+    ride_request_per_day_of_year()
+    time_per_day_of_year()
+    pickup_location_density_map()
 
 def overall_funnel_analysis_chart_with_counts():
     data = util.get_overall_funnel_analysis_dataframe()
@@ -351,10 +351,10 @@ def average_income_per_age_group():
     util.save_and_open(fig, "average_income_per_age_group.html", auto_open_all_plots)
 
 def signups_per_age_group():
-    age_18_24, age_25_34, age_35_44, age_45_54, age_unknown = util.get_signed_up_user_count_per_age_group()
+    count = util.get_signup_count_per_age_group()
     fig = px.pie(
         names=["Unknown", "18-24", "25-34", "35-44", "45-54"],
-        values=[age_unknown, age_18_24, age_25_34, age_35_44, age_45_54],
+        values=[count.age_18_to_24, count.age_25_to_34, count.age_35_to_44, count.age_45_to_54, count.unknown],
         title="Signed Up User Count per Age Group"
     )
 
