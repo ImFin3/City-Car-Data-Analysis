@@ -10,9 +10,10 @@ util = Utility()
 auto_open_all_plots = True
 
 def main():
-    overall_funnel_analysis_chart_with_counts()
-    overall_funnel_analysis_chart_percent_of_the_previous()
-    #full_funnel_analysis_chart_with_counts()
+    print("Hello World!")
+    #overall_funnel_analysis_chart_with_counts()
+    #overall_funnel_analysis_chart_percent_of_the_previous()
+    full_funnel_analysis_chart_with_counts()
     #full_funnel_analysis_chart_percent_of_the_previous()
     #full_funnel_analysis_chart_percent_of_the_top()
     #comparison_accept_pickup_cancel_duration()
